@@ -1,18 +1,34 @@
 package com.cos.blog.web;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 
+import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
+import com.cos.blog.domain.user.User;
 import com.cos.blog.domain.user.dto.JoinReqDto;
 import com.cos.blog.domain.user.dto.LoginReqDto;
 import com.cos.blog.service.Userservice;
+import com.cos.blog.util.Script;
 
 @WebServlet("/user")
 public class Usercontroller extends HttpServlet {
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		doProcess(request, response);
+	}
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		doProcess(request, response);
+	}
 
 	private void doProcess(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		String cmd = request.getParameter("cmd");
@@ -20,14 +36,22 @@ public class Usercontroller extends HttpServlet {
 		Userservice userService = new Userservice();
 
 		if (cmd.equals("loginForm")) {
-			response.sendRedirect("user/lginFrom.jsp");
+			response.sendRedirect("user/loginForm.jsp");
 		} else if (cmd.equals("login")) {
 			String username = request.getParameter("username");
 			String password = request.getParameter("password");
 			LoginReqDto dto = new LoginReqDto();
 			dto.setUsername(username);
 			dto.setPassword(password);
-			userService.로그인(dto);
+			User userEntity= userService.로그인(dto);
+			if(userEntity != null) {
+				HttpSession session = request.getSession();
+				session.setAttribute("principal", userEntity); //인증주체
+				response.sendRedirect("index.jsp");
+			}else {
+				Script.back(response, "로그인실패");
+			}
+			
 		} else if (cmd.equals("joinForm")) {
 			response.sendRedirect("user/joinForm.jsp");
 		} else if (cmd.equals("join")) {
@@ -41,7 +65,29 @@ public class Usercontroller extends HttpServlet {
 			dto.setPassword(password);
 			dto.setEmail(email);
 			dto.setAddress(address);
-			userService.회원가입(dto);
+			System.out.println("회원가입 :" +dto);
+			int result = userService.회원가입(dto);
+			if (result == 1) {
+				response.sendRedirect("index.jsp");
+			} else {
+				Script.back(response, "회원가입실패");
+			}
+		} else if (cmd.equals("usernameCheck")) {
+			BufferedReader br = request.getReader();
+			String username = br.readLine();
+			System.out.println(username);
+			int result = userService.유저네임중복체크(username);
+			PrintWriter out = response.getWriter();
+			if (result == 1) {
+				out.print("ok");
+			} else {
+				out.print("fail");
+			}
+			out.flush();
+		}else if (cmd.equals("logut")) {
+			HttpSession session = request.getSession();
+			session.invalidate();
+			response.sendRedirect("index.jsp");
 		}
 
 	}
